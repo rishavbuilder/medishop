@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader, Shield, AlertCircle } from 'lucide-react';
@@ -16,40 +16,7 @@ function LoginPageContent() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
 
-  const redirectPath = searchParams.get('redirect') || '';
-  const authError = searchParams.get('error');
-
-  // Redirect authenticated users
-  useEffect(() => {
-    if (!loading && user) {
-      if (isAdmin) {
-        router.replace(redirectPath || '/admin');
-      } else {
-        router.replace('/');
-      }
-    }
-  }, [user, loading, isAdmin, router, redirectPath]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-
-    const { error: authError } = await signIn(form.email, form.password);
-
-    if (authError) {
-      setSubmitting(false);
-      if (authError.includes('Invalid login credentials')) {
-        setError('Invalid email or password.');
-      } else {
-        setError(authError);
-      }
-      return;
-    }
-
-    toast.success('Welcome back!');
-    // Auth state change will trigger redirect via useEffect
-  };
+  const redirectParam = searchParams.get('redirect') || '';
 
   // Loading state
   if (loading) {
@@ -60,17 +27,53 @@ function LoginPageContent() {
     );
   }
 
-  // User is logged in, show redirect message
+  // Already logged in - show button to navigate
   if (user) {
+    const targetUrl = isAdmin ? (redirectParam || '/admin') : '/';
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="text-center">
-          <Loader size={32} className="animate-spin text-green-600 mx-auto mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+        <div className="max-w-sm w-full text-center p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield size={24} className="text-green-600" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Already Signed In</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            {user.email}
+          </p>
+          <button
+            onClick={() => router.push(targetUrl)}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+          >
+            Continue {isAdmin ? 'to Dashboard' : 'Shopping'} <ArrowRight size={16} />
+          </button>
         </div>
       </div>
     );
   }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+
+    const { error: authError } = await signIn(form.email, form.password);
+
+    if (authError) {
+      setSubmitting(false);
+      setError(authError.includes('Invalid') ? 'Invalid email or password.' : authError);
+      return;
+    }
+
+    toast.success('Welcome back!');
+    setSubmitting(false);
+
+    // Navigate after successful login
+    // Wait a bit for auth state to propagate
+    setTimeout(() => {
+      const target = isAdmin ? (redirectParam || '/admin') : '/';
+      router.push(target);
+    }, 100);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
@@ -87,19 +90,10 @@ function LoginPageContent() {
             </div>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
-            Sign in to track orders and upload prescriptions
-          </p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Sign in to continue</p>
         </div>
 
-        {/* Error messages */}
-        {authError && (
-          <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl flex items-center gap-2 text-sm text-orange-700 dark:text-orange-300">
-            <AlertCircle size={16} className="shrink-0" />
-            {authError === 'auth_required' ? 'Please sign in to access that page.' : 'Access denied. Sign in with an admin account.'}
-          </div>
-        )}
-
+        {/* Error */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
             <AlertCircle size={16} className="shrink-0" />
@@ -107,7 +101,7 @@ function LoginPageContent() {
           </div>
         )}
 
-        {/* Login Form */}
+        {/* Form */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -134,7 +128,7 @@ function LoginPageContent() {
                   value={form.password}
                   onChange={e => { setForm(f => ({ ...f, password: e.target.value })); setError(null); }}
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder="Enter password"
                   required
                   className="input-field pl-10 pr-10"
                   disabled={submitting}
@@ -156,7 +150,7 @@ function LoginPageContent() {
             >
               {submitting
                 ? <><Loader size={18} className="animate-spin" /> Signing in...</>
-                : <><>Sign In</> <ArrowRight size={16} /></>
+                : <><span>Sign In</span> <ArrowRight size={16} /></>
               }
             </button>
           </form>
@@ -171,9 +165,8 @@ function LoginPageContent() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
-          <Shield size={12} className="text-green-500" />
-          <span>Secure login</span>
+        <div className="mt-4 text-center text-xs text-gray-400">
+          Admin: admin2435@gmail.com / admin2435
         </div>
       </div>
     </div>

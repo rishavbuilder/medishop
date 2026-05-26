@@ -2,6 +2,18 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Skip static files and api routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.') ||
+    pathname === '/favicon.ico'
+  ) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -27,59 +39,52 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Get user session
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
-  // Protect admin routes - only allow authenticated admin users
+  // Admin route protection
   if (pathname.startsWith('/admin')) {
-    // Not logged in - redirect to login
     if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
+      // Not logged in - redirect to login
+      const url = new URL('/login', request.url);
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
 
-    // Check if user is admin
+    // Check admin role from profiles table
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .maybeSingle();
 
-    const role = profile?.role || 'user';
-
-    // Not admin - redirect to home
-    if (role !== 'admin') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/';
-      return NextResponse.redirect(url);
+    if (profile?.role !== 'admin') {
+      // Not admin - redirect to home
+      return NextResponse.redirect(new URL('/', request.url));
     }
+
+    return response;
   }
 
-  // Redirect logged-in users away from login/signup pages
-  if ((pathname === '/login' || pathname === '/signup') && user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
+  // Login/signup pages - redirect if already logged in
+  if (pathname === '/login' || pathname === '/signup') {
+    if (user) {
+      // Check role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    const role = profile?.role || 'user';
-    const redirect = request.nextUrl.searchParams.get('redirect');
-
-    const url = request.nextUrl.clone();
-    url.pathname = role === 'admin' ? (redirect || '/admin') : '/';
-    url.searchParams.delete('redirect');
-    return NextResponse.redirect(url);
+      const redirect = request.nextUrl.searchParams.get('redirect');
+      const targetPath = profile?.role === 'admin' ? (redirect || '/admin') : '/';
+      return NextResponse.redirect(new URL(targetPath, request.url));
+    }
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login', '/signup'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api|.*\\..*).*)'],
 };
