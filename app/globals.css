@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 15% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 10%;
+    --primary: 152 69% 31%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 148 30% 95%;
+    --secondary-foreground: 152 69% 25%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
+    --accent: 152 45% 92%;
+    --accent-foreground: 152 69% 25%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 152 69% 31%;
+    --chart-1: 152 69% 31%;
+    --chart-2: 196 78% 42%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 280 65% 60%;
+    --radius: 0.625rem;
+
+    /* Pharmacy brand colors */
+    --green-50: #f0fdf4;
+    --green-100: #dcfce7;
+    --green-200: #bbf7d0;
+    --green-500: #22c55e;
+    --green-600: #16a34a;
+    --green-700: #15803d;
+    --green-800: #166534;
+    --teal-500: #14b8a6;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+  }
+
+  .dark {
+    --background: 220 20% 7%;
+    --foreground: 220 10% 95%;
+    --card: 220 18% 10%;
+    --card-foreground: 220 10% 95%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 220 10% 95%;
+    --primary: 152 69% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 152 69% 60%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 220 15% 18%;
+    --accent-foreground: 152 69% 60%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 152 69% 40%;
+    --chart-1: 152 69% 50%;
+    --chart-2: 196 78% 52%;
+    --chart-3: 38 92% 60%;
+    --chart-4: 0 84% 70%;
+    --chart-5: 280 65% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .pharmacy-gradient {
+    @apply bg-gradient-to-br from-green-600 to-teal-600;
+  }
+
+  .glass-card {
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border border-white/20 dark:border-gray-700/50;
+  }
+
+  .section-padding {
+    @apply py-12 px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-max {
+    @apply max-w-7xl mx-auto;
+  }
+
+  .badge-green {
+    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+
+  .badge-red {
+    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+
+  .badge-yellow {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+
+  .btn-primary {
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl px-6 py-3 transition-all duration-200 shadow-md hover:shadow-lg active:scale-95;
+  }
+
+  .btn-whatsapp {
+    @apply bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold rounded-xl px-6 py-3 transition-all duration-200 shadow-md hover:shadow-lg active:scale-95;
+  }
+
+  .medicine-card {
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-1 overflow-hidden;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-green-300 dark:bg-green-800 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-green-400 dark:bg-green-700;
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Toast customization */
+[data-sonner-toaster] {
+  bottom: 80px !important;
+}
+
+@media (min-width: 768px) {
+  [data-sonner-toaster] {
+    bottom: 16px !important;
+  }
+}
