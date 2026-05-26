@@ -7,7 +7,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader, Shield, AlertCircle } from
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
-function LoginForm() {
+function LoginPageContent() {
   const { user, signIn, loading, isAdmin } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -15,54 +15,44 @@ function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
 
   const redirectPath = searchParams.get('redirect') || '';
   const authError = searchParams.get('error');
 
+  // Redirect authenticated users
   useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    // Redirect authenticated users
-    if (hydrated && !loading && user) {
+    if (!loading && user) {
       if (isAdmin) {
         router.replace(redirectPath || '/admin');
       } else {
         router.replace('/');
       }
     }
-  }, [hydrated, user, loading, isAdmin, router, redirectPath]);
+  }, [user, loading, isAdmin, router, redirectPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
-    try {
-      const { error: authError } = await signIn(form.email, form.password);
-      if (authError) {
-        setSubmitting(false);
-        if (authError.includes('Invalid login credentials')) {
-          setError('Invalid email or password. Please try again.');
-        } else if (authError.includes('Email not confirmed')) {
-          setError('Please confirm your email address first.');
-        } else {
-          setError(authError);
-        }
-        return;
-      }
-      toast.success('Welcome back!');
-      // Navigation will happen via useEffect when user state updates
-    } catch {
+    const { error: authError } = await signIn(form.email, form.password);
+
+    if (authError) {
       setSubmitting(false);
-      setError('Something went wrong. Please try again.');
+      if (authError.includes('Invalid login credentials')) {
+        setError('Invalid email or password.');
+      } else {
+        setError(authError);
+      }
+      return;
     }
+
+    toast.success('Welcome back!');
+    // Auth state change will trigger redirect via useEffect
   };
 
-  // Show loading during SSR or initial hydration
-  if (!hydrated || loading) {
+  // Loading state
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <Loader size={32} className="animate-spin text-green-600" />
@@ -70,7 +60,7 @@ function LoginForm() {
     );
   }
 
-  // If user is logged in, show loading while redirecting
+  // User is logged in, show redirect message
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
@@ -102,21 +92,14 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Auth required message */}
-        {authError === 'auth_required' && (
+        {/* Error messages */}
+        {authError && (
           <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl flex items-center gap-2 text-sm text-orange-700 dark:text-orange-300">
             <AlertCircle size={16} className="shrink-0" />
-            Please sign in to access that page.
-          </div>
-        )}
-        {authError === 'access_denied' && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
-            <AlertCircle size={16} className="shrink-0" />
-            You don't have admin access. Please sign in with an admin account.
+            {authError === 'auth_required' ? 'Please sign in to access that page.' : 'Access denied. Sign in with an admin account.'}
           </div>
         )}
 
-        {/* Error message */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
             <AlertCircle size={16} className="shrink-0" />
@@ -124,30 +107,27 @@ function LoginForm() {
           </div>
         )}
 
-        {/* Card */}
+        {/* Login Form */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   value={form.email}
                   onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setError(null); }}
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="admin2435@gmail.com"
                   required
                   className="input-field pl-10"
-                  autoComplete="email"
                   disabled={submitting}
                 />
               </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
@@ -157,13 +137,12 @@ function LoginForm() {
                   placeholder="Enter your password"
                   required
                   className="input-field pl-10 pr-10"
-                  autoComplete="current-password"
                   disabled={submitting}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -192,10 +171,9 @@ function LoginForm() {
           </div>
         </div>
 
-        {/* Security note */}
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
           <Shield size={12} className="text-green-500" />
-          <span>Your data is secure and encrypted</span>
+          <span>Secure login</span>
         </div>
       </div>
     </div>
@@ -209,7 +187,7 @@ export default function LoginPage() {
         <Loader size={32} className="animate-spin text-green-600" />
       </div>
     }>
-      <LoginForm />
+      <LoginPageContent />
     </Suspense>
   );
 }
