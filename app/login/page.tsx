@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
+function LoginForm() {
   const { user, signIn, loading, isAdmin } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -15,19 +15,25 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   const redirectPath = searchParams.get('redirect') || '';
   const authError = searchParams.get('error');
 
   useEffect(() => {
-    if (!loading && user) {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    // Redirect authenticated users
+    if (hydrated && !loading && user) {
       if (isAdmin) {
         router.replace(redirectPath || '/admin');
       } else {
-        router.replace(redirectPath || '/');
+        router.replace('/');
       }
     }
-  }, [user, loading, isAdmin, router, redirectPath]);
+  }, [hydrated, user, loading, isAdmin, router, redirectPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +43,7 @@ export default function LoginPage() {
     try {
       const { error: authError } = await signIn(form.email, form.password);
       if (authError) {
+        setSubmitting(false);
         if (authError.includes('Invalid login credentials')) {
           setError('Invalid email or password. Please try again.');
         } else if (authError.includes('Email not confirmed')) {
@@ -47,26 +54,30 @@ export default function LoginPage() {
         return;
       }
       toast.success('Welcome back!');
-      // Redirect will happen via the useEffect above
+      // Navigation will happen via useEffect when user state updates
     } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
       setSubmitting(false);
+      setError('Something went wrong. Please try again.');
     }
   };
 
-  if (loading) {
+  // Show loading during SSR or initial hydration
+  if (!hydrated || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <Loader size={32} className="animate-spin text-green-600" />
       </div>
     );
   }
 
+  // If user is logged in, show loading while redirecting
   if (user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader size={32} className="animate-spin text-green-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="text-center">
+          <Loader size={32} className="animate-spin text-green-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting...</p>
+        </div>
       </div>
     );
   }
@@ -128,6 +139,7 @@ export default function LoginPage() {
                   required
                   className="input-field pl-10"
                   autoComplete="email"
+                  disabled={submitting}
                 />
               </div>
             </div>
@@ -135,7 +147,6 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                <a href="#" className="text-xs text-green-600 dark:text-green-400 hover:underline">Forgot password?</a>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -147,6 +158,7 @@ export default function LoginPage() {
                   required
                   className="input-field pl-10 pr-10"
                   autoComplete="current-password"
+                  disabled={submitting}
                 />
                 <button
                   type="button"
@@ -187,5 +199,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <Loader size={32} className="animate-spin text-green-600" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

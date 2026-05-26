@@ -1,10 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export async function middleware(req: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request: { headers: req.headers },
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: { headers: request.headers },
   });
 
   const supabase = createServerClient(
@@ -13,46 +12,45 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll() {
-          return req.cookies.getAll();
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            req.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request: { headers: req.headers },
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({
+            request: { headers: request.headers },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           );
         },
       },
     }
   );
 
+  // IMPORTANT: Avoid writing any logic between createServerClient and
+  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+  // issues with time being wrong, cookies being missing, or the session not being
+  // refreshed.
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = req.nextUrl;
-
-  // Admin routes that require admin role
+  const { pathname } = request.nextUrl;
   const isAdminRoute = pathname.startsWith('/admin');
-
-  // Auth routes that logged-in users shouldn't see
   const isAuthRoute = pathname === '/login' || pathname === '/signup';
 
-  // If no user and trying to access admin route
+  // If no user and trying to access admin routes, redirect to login
   if (!user && isAdminRoute) {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = '/login';
-    redirectUrl.searchParams.set('redirect', pathname);
-    redirectUrl.searchParams.set('error', 'auth_required');
-    return NextResponse.redirect(redirectUrl);
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(url);
   }
 
-  // If logged in and accessing auth routes, redirect based on role
+  // If user is logged in and visits login/signup, redirect appropriately
   if (user && isAuthRoute) {
+    // Fetch role from profiles
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -60,17 +58,20 @@ export async function middleware(req: NextRequest) {
       .maybeSingle();
 
     const role = profile?.role || 'user';
-    const redirectUrl = req.nextUrl.clone();
+    const redirectPath = request.nextUrl.searchParams.get('redirect');
 
+    const url = request.nextUrl.clone();
     if (role === 'admin') {
-      redirectUrl.pathname = '/admin';
+      url.pathname = redirectPath || '/admin';
     } else {
-      redirectUrl.pathname = '/';
+      url.pathname = '/';
     }
-    return NextResponse.redirect(redirectUrl);
+    url.searchParams.delete('redirect');
+    url.searchParams.delete('error');
+    return NextResponse.redirect(url);
   }
 
-  // If accessing admin routes, verify admin role
+  // If user accessing admin area, verify they are admin
   if (user && isAdminRoute) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -81,20 +82,24 @@ export async function middleware(req: NextRequest) {
     const role = profile?.role || 'user';
 
     if (role !== 'admin') {
-      const redirectUrl = req.nextUrl.clone();
-      redirectUrl.pathname = '/';
-      redirectUrl.searchParams.set('error', 'access_denied');
-      return NextResponse.redirect(redirectUrl);
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
     }
   }
 
-  return supabaseResponse;
+  return response;
 }
 
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/login',
-    '/signup',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
